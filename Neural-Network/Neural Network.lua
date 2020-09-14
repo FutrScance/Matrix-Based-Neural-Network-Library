@@ -1,29 +1,36 @@
-local module = {}
-
 local matmath = require(script.MatrixMathematics)
 
 local max = math.max
 local exp = math.exp
-local function Activator(x) --leaky relu
+
+--leaky relu
+local function Activator(x)
 	return max(.01*x, x)
 end
 
-local function Sigmoid(x) --activator function for the final layer to add non-linearity
+--activator function for the final layer to add non-linearity
+local function Sigmoid(x)
 	return 1/(1+exp(-x))
 end
 
-function module.Create(Size) --creates a neural network
+local module = {}
+
+--creates a neural network
+function module.Create(Size)
 	local network = {}
 	local biases = {}
-	for i = 1,#Size-1 do
-		local nextnum = i+1
+
+	for i = 1,#Size - 1 do
+		local nextnum = i + 1
 		network[i] = matmath.CreateRandom({Size[i], Size[nextnum]}, -2, 2)
 		biases[i] = matmath.CreateRandom({1, Size[nextnum]}, -2, 2)
 	end
+
 	return {network, biases}
 end
 
-function module.Run(Network, Inputs, BackProp) --input size: x by 1
+--input size: x by 1
+function module.Run(Network, Inputs, BackProp)
 	local compinp = {}
 	for i = 1,#Inputs do
 		compinp[i] = {Inputs[i]}
@@ -34,31 +41,34 @@ function module.Run(Network, Inputs, BackProp) --input size: x by 1
 	
 	local rawact = activations
 	
-	for i = 1,#Network[1]-1 do -- -1 because the output layer is done slightly differently
-		local nextnum = i+1
+	-- -1 because the output layer is done slightly differently
+	for i = 1,#Network[1]-1 do
+		local nextnum = i + 1
 		activations[nextnum] = matmath.Multiply(Network[1][i], activations[i])
 		activations[nextnum] = matmath.Add(activations[nextnum], Network[2][i])
 		rawact[nextnum] = activations[nextnum]
 		activations[nextnum] = matmath.Map(activations[nextnum], Activator)
 	end
-	activations[#Network[1]+1] = matmath.Multiply(Network[1][#Network[1]], activations[#Network[1]])
-	activations[#Network[1]+1] = matmath.Add(activations[#Network[1]+1], Network[2][#Network[1]])
-	rawact[#Network[1]+1] = activations[#Network[1]+1]
-	activations[#Network[1]+1] = matmath.Map(activations[#Network[1]+1], Sigmoid)
+
+	activations[#Network[1] + 1] = matmath.Multiply(Network[1][#Network[1]], activations[#Network[1]])
+	activations[#Network[1] + 1] = matmath.Add(activations[#Network[1] + 1], Network[2][#Network[1]])
+	rawact[#Network[1] + 1] = activations[#Network[1] + 1]
+	activations[#Network[1]+1] = matmath.Map(activations[#Network[1] + 1], Sigmoid)
 	
 	if BackProp then
 		return {activations, rawact}
 	end
 	
-	for i = 1,#activations[#Network[1]+1] do --changes the output matrix into a simple table
-		activations[#Network[1]+1][i] = activations[#Network[1]+1][i][1]
+	--changes the output matrix into a simple table
+	for i = 1,#activations[#Network[1] + 1] do
+		activations[#Network[1] + 1][i] = activations[#Network[1] + 1][i][1]
 	end
-	return activations[#Network[1]+1]
+	return activations[#Network[1] + 1]
 end
 
 
 local function DAct(x)
-	if x>=0 then
+	if x >= 0 then
 		return 1
 	end
 	return .01
@@ -66,7 +76,7 @@ end
 
 local function DSig(x)
 	local s = Sigmoid(x)
-	return s*(1-s)
+	return s * 1 - s)
 end
 
 
@@ -75,38 +85,49 @@ function module.BackPropagate(Network, TrainingData, LearningRate)
 	local gradients = {}
 	local bigrad = {}
 	
-	for i = 1,#Network[1] do --for the number of layers in the network [this is to create a set of empty matrices to do stochastic gradient descent]
-		gradients[i] = matmath.Create({#Network[1][i][1], #Network[1][i]}, 0) --create an empty matrix the same size as the network
-		bigrad[i] = matmath.Create({1, #Network[2][i]}, 0) --bias gradient matrix
+	--for the number of layers in the network [this is to create a set of empty matrices to do stochastic gradient descent]
+	for i = 1,#Network[1] do
+		--create an empty matrix the same size as the network
+		gradients[i] = matmath.Create({#Network[1][i][1], #Network[1][i]}, 0)
+		--bias gradient matrix
+		bigrad[i] = matmath.Create({1, #Network[2][i]}, 0)
 	end
-	for i = 1,#TrainingData do --backpropagate for all given pieces of training data
+	
+	--backpropagate for all given pieces of training data
+	for i = 1,#TrainingData do
 		local Inputs = TrainingData[i][1]
 		local Targets = TrainingData[i][2]
 		
 		local outputs = module.Run(Network, TrainingData[i][1], true)
-		local POut = outputs[1]--processed outputs
-		local ROut = outputs[2]--raw outputs
+		--processed outputs
+		local POut = outputs[1]
+		--raw outputs
+		local ROut = outputs[2]
 		
-		local err = matmath.Subtract(matmath.FromTable(Targets), POut[#POut]) --POut[#POut] is the outputs of the output layer of the network
+		--POut[#POut] is the outputs of the output layer of the network
+		local err = matmath.Subtract(matmath.FromTable(Targets), POut[#POut])
 		
 		local errors = {}
-		errors[#Network[1]+1] = err
+		errors[#Network[1] + 1] = err
 		
 		--error likely originates from between here and line 110
-		
-		for o = #Network[1]+1,2,-1 do --calculate the error for the number of weight matrices in this network
+
+		--calculate the error for the number of weight matrices in this network
+		for o = #Network[1] + 1, 2, -1 do
 			errors[o-1] = matmath.Transpose(Network[1][o-1])
 			errors[o-1] = matmath.Multiply(errors[o-1], errors[o])
 		end
 		
 		--error almost guaranteed happens somewhere between here and line 110
-		for o = 1,#Network[1]-1 do -- -1 because the final layer is done a little differently
+
+		-- -1 because the final layer is done a little differently
+		for o = 1,#Network[1] - 1 do
 			local gradient = matmath.Map(ROut[o], DAct)
-			gradients[o] = matmath.Add(gradients[o], matmath.Multiply(errors[o+1], matmath.Transpose(gradient)))
+			gradients[o] = matmath.Add(gradients[o], matmath.Multiply(errors[o + 1], matmath.Transpose(gradient)))
 			bigrad[o] = matmath.Add(bigrad[o], gradient)
 		end
 		local gradient = matmath.Map(ROut[#Network[1]], DSig)
-		gradients[#Network[1]] = matmath.Add(gradients[#Network[1]], matmath.Multiply(errors[#Network[1]+1], matmath.Transpose(gradient)))
+		gradients[#Network[1]] = matmath.Add(gradients[#Network[1]], matmath.Multiply(errors[#Network[1] + 1], matmath.Transpose(gradient)))
 		
 		
 	end
