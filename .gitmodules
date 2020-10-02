@@ -1,0 +1,3 @@
+[submodule "Neural-Network/MatrixMathematics"]
+	path = Neural-Network/MatrixMathematics
+	url = https://github.com/FutrScance/Roblox-Matrix-Mathematics-Module
