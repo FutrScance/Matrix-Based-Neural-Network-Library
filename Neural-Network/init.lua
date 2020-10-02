@@ -2,6 +2,7 @@ local matmath = require(script.MatrixMathematics)
 
 local max = math.max
 local exp = math.exp
+
 --leaky relu
 local function Activator(x)
 	return max(0.01 * x, x)
